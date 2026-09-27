@@ -1,39 +1,62 @@
-# ODE Solvers Comparison
+# Numerical Integration Methods Explorer
 
-A from-scratch implementation and comparison of six numerical methods for
-solving ordinary differential equations:
+An interactive tool comparing four numerical integration methods at
+arbitrary precision, with a live convergence plot and results table.
 
-- **Euler method** — explicit forward Euler (1st order)
-- **Modified Euler method** — Heun's predictor-corrector (2nd order)
-- **RK2** — midpoint method (2nd order)
-- **RK4** — classic 4-stage Runge-Kutta (4th order)
-- **RKF45** — Runge-Kutta-Fehlberg, embedded 4th/5th order with adaptive
-  step size
-- **DOP853** — Dormand-Prince 8th order, adaptive (via
-  `scipy.integrate.solve_ivp`, since its ~13-stage Butcher tableau isn't
-  practical to hand-code)
+## Methods
 
-All six solvers are run on the same test problem, and their accuracy is
-compared against the known closed-form solution.
+1. **Trapezoidal rule** (composite, degree-1 Newton-Cotes)
+2. **Simpson's 1/3 rule** (composite, degree-2 Newton-Cotes)
+3. **Simpson's 3/8 rule** (composite, degree-3 Newton-Cotes)
+4. **Gaussian quadrature** (Gauss-Legendre; nodes/weights computed at
+   working precision via the Golub-Welsch eigenvalue method, not looked up
+   from a fixed-precision table)
+
+## Why arbitrary precision?
+
+Gaussian quadrature converges so fast on a smooth function that with
+ordinary double-precision (float64) numbers, its error hits the ~1e-16
+machine-epsilon floor almost immediately. Past that point you're no longer
+seeing the method's real truncation error -- just double-precision
+round-off noise, which doesn't shrink monotonically and can even tick back
+*up* slightly as more terms are summed.
+
+This project uses [mpmath](https://mpmath.org/) at 60 decimal digits of
+working precision, pushing that round-off floor down to roughly 1e-60 --
+far below anything reached in this demo -- so every convergence curve shows
+genuine truncation error across its full range, not an artifact of
+floating-point precision.
 
 ## Output
 
+Gaussian quadrature converges so fast on a smooth function that with
+ordinary double-precision (float64) numbers, its error hits the ~1e-16
+machine-epsilon floor almost immediately. Past that point you're no longer
+seeing the method's real truncation error -- just double-precision
+round-off noise, which doesn't shrink monotonically and can even tick back
+*up* slightly as more terms are summed.
 ![Solution and error comparison plots](assets/demo.gif)
 
+This project uses [mpmath](https://mpmath.org/) at 60 decimal digits of
+working precision, pushing that round-off floor down to roughly 1e-60 --
+far below anything reached in this demo -- so every convergence curve shows
+genuine truncation error across its full range, not an artifact of
+floating-point precision.
 *Left: the six numerical solutions vs. the exact solution. Right: each
 method's error over time on a log scale.*
 
+
+
 ## Features
 
-- Each method implemented as its own function with a shared signature
-  (`solver(f, t0, y0, t_end, h)`), so any of them can be dropped into a
-  different ODE or system of ODEs
-- Works for both scalar and vector-valued `y`, since state is handled as a
-  NumPy array internally
-- Adaptive step-size control for RKF45, implemented from the classic
-  Fehlberg coefficients (Butcher tableau)
-- Side-by-side accuracy comparison: a results table (final value, error,
-  steps used) plus solution and error-vs-time plots
+- Interactive **n slider** (1-60) in the plot window itself, with a **Run**
+  button to recompute
+- Live convergence plot (log-log error vs. n) for all four methods
+- Results table showing the approximation and error at the chosen n
+- Dark theme UI, consistent with this author's other simulation projects
+- `gauss_legendre_nodes_weights` and other expensive per-n computations are
+  memoized with `functools.lru_cache`, so repeated use of the slider/Run
+  button doesn't redo work already computed
 
 ## Requirements
 
@@ -41,3 +64,35 @@ method's error over time on a log scale.*
 - See `requirements.txt`
 
 ## Setup
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+```bash
+python integral_sol.py
+```
+
+Drag the **n** slider to the number of points/subintervals you want, then
+click **Run**. The convergence plot redraws showing every n from 1 up to
+your chosen value, and the results table updates to show each method's
+approximation and error at that n.
+
+## Test problem
+
+By default, the script evaluates:
+
+```
+I = integral of sin(x) from 0 to pi = 2
+```
+
+To try a different function, edit `f(x)` near the top of the script (it's
+an `mpmath`-based function, so use `mp.sin`, `mp.exp`, etc. rather than
+plain Python `math`), and update `a`, `b`, and `I_exact` to match your new
+problem and its known closed-form answer.
+
+## License
+
+MIT -- see [LICENSE](LICENSE).
